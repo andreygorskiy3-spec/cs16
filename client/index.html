@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CS 1.6 Browser — de_dust2</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════ MAIN MENU ══════════════════════ -->
+<div id="mainMenu">
+  <div class="menu-bg"></div>
+  <div class="menu-container">
+    <div class="menu-logo">
+      <div class="logo-cs">CS</div>
+      <div class="logo-sub">COUNTER-STRIKE <span>1.6</span></div>
+      <div class="logo-map">de_dust2 · Browser Edition</div>
+    </div>
+    <div class="menu-form">
+      <div class="form-group">
+        <label>NICKNAME</label>
+        <input type="text" id="playerName" placeholder="Enter name..." maxlength="20" value="Player1">
+      </div>
+      <div class="form-group">
+        <label>CHOOSE SIDE</label>
+        <div class="team-select">
+          <button class="team-btn active" id="btnCT" onclick="selectTeam('ct')">
+            <div class="team-icon ct-icon">CT</div>
+            <span>COUNTER-TERRORIST</span>
+          </button>
+          <button class="team-btn" id="btnT" onclick="selectTeam('t')">
+            <div class="team-icon t-icon">T</div>
+            <span>TERRORIST</span>
+          </button>
+        </div>
+      </div>
+      <button class="btn-play" onclick="connectToGame()">▶ CONNECT TO SERVER</button>
+      <div id="connectError" class="connect-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ LOADING ══════════════════════ -->
+<div id="loadingScreen" style="display:none">
+  <div class="loading-content">
+    <div class="loading-map">de_dust2</div>
+    <div class="loading-bar-wrap"><div class="loading-bar" id="loadingBar"></div></div>
+    <div class="loading-text" id="loadingText">Loading map geometry...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════ GAME ══════════════════════ -->
+<div id="gameContainer" style="display:none">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <!-- Top: Score & Round -->
+    <div class="hud-top">
+      <div class="hud-score t-score">
+        <div class="team-label">TERRORIST</div>
+        <div class="score-num" id="scoreT">0</div>
+      </div>
+      <div class="hud-center-top">
+        <div class="round-info" id="roundInfo">ROUND 1</div>
+        <div class="round-timer" id="roundTimer">1:55</div>
+        <div class="phase-label" id="phaseLabel">FREEZE TIME</div>
+      </div>
+      <div class="hud-score ct-score">
+        <div class="team-label">COUNTER-TERRORIST</div>
+        <div class="score-num" id="scoreCT">0</div>
+      </div>
+    </div>
+
+    <!-- Bottom Left: Health & Armor -->
+    <div class="hud-bottom-left">
+      <div class="hud-health">
+        <span class="hud-icon">♥</span>
+        <span id="hudHealth">100</span>
+      </div>
+      <div class="hud-armor">
+        <span class="hud-icon">🛡</span>
+        <span id="hudArmor">0</span>
+      </div>
+    </div>
+
+    <!-- Bottom Center: Crosshair area -->
+    <div class="hud-crosshair" id="crosshair">
+      <div class="ch-line ch-top"></div>
+      <div class="ch-line ch-bottom"></div>
+      <div class="ch-line ch-left"></div>
+      <div class="ch-line ch-right"></div>
+    </div>
+
+    <!-- Bottom Right: Weapon & Money -->
+    <div class="hud-bottom-right">
+      <div class="hud-money">$<span id="hudMoney">800</span></div>
+      <div class="hud-weapon" id="hudWeapon">USP</div>
+      <div class="hud-ammo"><span id="hudAmmo">12</span> / <span id="hudReserve">100</span></div>
+    </div>
+
+    <!-- Bomb indicator -->
+    <div class="bomb-indicator" id="bombIndicator" style="display:none">
+      <div class="bomb-icon">💣</div>
+      <div class="bomb-timer" id="bombTimer">40</div>
+      <div class="bomb-site" id="bombSite">SITE A</div>
+    </div>
+
+    <!-- Kill feed -->
+    <div class="kill-feed" id="killFeed"></div>
+
+    <!-- Chat -->
+    <div class="chat-container" id="chatContainer">
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+    <div class="chat-input-wrap" id="chatInputWrap" style="display:none">
+      <span class="chat-prefix">Say:</span>
+      <input type="text" id="chatInput" maxlength="128" autocomplete="off">
+    </div>
+
+    <!-- Players list (Tab) -->
+    <div class="scoreboard" id="scoreboard" style="display:none">
+      <div class="sb-title">PLAYERS — de_dust2</div>
+      <div class="sb-teams">
+        <div class="sb-team" id="sbCT">
+          <div class="sb-team-header ct-header">COUNTER-TERRORISTS</div>
+        </div>
+        <div class="sb-team" id="sbT">
+          <div class="sb-team-header t-header">TERRORISTS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bot menu -->
+    <div class="bot-menu" id="botMenu" style="display:none">
+      <div class="bot-menu-title">ADD BOT</div>
+      <button class="bot-btn" onclick="addBot('ct')">+ CT Bot</button>
+      <button class="bot-btn" onclick="addBot('t')">+ T Bot</button>
+      <button class="bot-menu-close" onclick="toggleBotMenu()">✕</button>
+    </div>
+
+    <!-- Buy menu (B key) -->
+    <div class="buy-menu" id="buyMenu" style="display:none">
+      <div class="buy-title">BUY MENU — $<span id="buyMoney">800</span></div>
+      <div class="buy-grid" id="buyGrid"></div>
+      <div class="buy-hint">Press B or ESC to close</div>
+    </div>
+
+    <!-- Round end banner -->
+    <div class="round-banner" id="roundBanner" style="display:none">
+      <div class="banner-text" id="bannerText">COUNTER-TERRORISTS WIN!</div>
+      <div class="banner-reason" id="bannerReason">All terrorists eliminated</div>
+    </div>
+
+    <!-- Death overlay -->
+    <div class="dead-overlay" id="deadOverlay" style="display:none">
+      <div class="dead-text">YOU WERE KILLED</div>
+      <div class="dead-sub">Waiting for next round...</div>
+    </div>
+
+    <!-- Hit marker -->
+    <div class="hit-marker" id="hitMarker"></div>
+
+    <!-- Controls hint -->
+    <div class="controls-hint" id="controlsHint">
+      WASD Move · Mouse Aim · LMB Shoot · R Reload · B Buy · Tab Scores · O Bots · T Chat
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/map.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
