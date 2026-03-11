@@ -159,16 +159,19 @@ function setupPointerLock() {
 
   overlay.addEventListener('click', function() { canvas.requestPointerLock(); });
 
+  var ignoreMouseFrames = 0;
+
   document.addEventListener('pointerlockchange', function() {
     pointerLocked = (document.pointerLockElement === canvas);
     overlay.style.display = pointerLocked ? 'none' : 'flex';
+    if (pointerLocked) ignoreMouseFrames = 5;
   });
 
   document.addEventListener('mousemove', function(e) {
     if (!pointerLocked) return;
-    // Clamp per-event movement to avoid huge jumps (e.g. on pointer lock acquire)
-    var dx = Math.max(-50, Math.min(50, e.movementX));
-    var dy = Math.max(-50, Math.min(50, e.movementY));
+    if (ignoreMouseFrames > 0) { ignoreMouseFrames--; return; }
+    var dx = Math.max(-30, Math.min(30, e.movementX));
+    var dy = Math.max(-30, Math.min(30, e.movementY));
     yaw   -= dx * SENSITIVITY;
     pitch -= dy * SENSITIVITY;
     pitch  = Math.max(-1.4, Math.min(1.4, pitch));
