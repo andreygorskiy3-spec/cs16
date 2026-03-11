@@ -166,8 +166,14 @@ function setupPointerLock() {
 
   document.addEventListener('mousemove', function(e) {
     if (!pointerLocked) return;
-    mouseDX += e.movementX;
-    mouseDY += e.movementY;
+    // Clamp per-event movement to avoid huge jumps (e.g. on pointer lock acquire)
+    var dx = Math.max(-50, Math.min(50, e.movementX));
+    var dy = Math.max(-50, Math.min(50, e.movementY));
+    yaw   -= dx * SENSITIVITY;
+    pitch -= dy * SENSITIVITY;
+    pitch  = Math.max(-1.4, Math.min(1.4, pitch));
+    camera.rotation.y = yaw;
+    camera.rotation.x = pitch;
   });
 }
 
@@ -218,15 +224,7 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
   var dt = Math.min(clock.getDelta(), 0.05);
 
-  if (pointerLocked && alive) {
-    yaw   -= mouseDX * SENSITIVITY;
-    pitch -= mouseDY * SENSITIVITY;
-    pitch  = Math.max(-1.4, Math.min(1.4, pitch));
-  }
-  mouseDX = 0; mouseDY = 0;
-
-  camera.rotation.y = yaw;
-  camera.rotation.x = pitch;
+  // camera rotation applied directly in mousemove handler
 
   if (alive && phase !== 'freeze') {
     movePlayer(dt);
