@@ -77,6 +77,8 @@ function simulateLoading(cb) {
 }
 
 // ─── THREE.JS SETUP ──────────────────────────────────────
+var yawObject, pitchObject;
+
 function initThree() {
   clock = new THREE.Clock();
   scene = new THREE.Scene();
@@ -87,9 +89,13 @@ function initThree() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.autoClear = false;
 
-  // Main FPS camera
+  // FPS camera rig: yawObject (left/right) -> pitchObject (up/down) -> camera
   camera = new THREE.PerspectiveCamera(90, window.innerWidth/window.innerHeight, 0.05, 500);
-  camera.rotation.order = 'YXZ';
+  pitchObject = new THREE.Object3D();
+  pitchObject.add(camera);
+  yawObject = new THREE.Object3D();
+  yawObject.add(pitchObject);
+  scene.add(yawObject);
 
   // Weapon viewmodel camera
   weaponCamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 10);
@@ -175,8 +181,8 @@ function setupPointerLock() {
     yaw   -= dx * SENSITIVITY;
     pitch -= dy * SENSITIVITY;
     pitch  = Math.max(-1.4, Math.min(1.4, pitch));
-    camera.rotation.y = yaw;
-    camera.rotation.x = pitch;
+    yawObject.rotation.y = yaw;
+    pitchObject.rotation.x = pitch;
   });
 }
 
@@ -271,7 +277,7 @@ function movePlayer(dt) {
   var ny=myY+velY*dt;
   if (ny<=0) { myY=0; velY=0; onGround=true; } else { myY=ny; onGround=false; }
 
-  camera.position.set(myX, myY+PLAYER_HEIGHT, myZ);
+  yawObject.position.set(myX, myY+PLAYER_HEIGHT, myZ);
 }
 
 // ─── WEAPON ANIMATION ────────────────────────────────────
@@ -285,6 +291,7 @@ function tickWeaponAnim(dt) {
   weaponMesh.position.set(0.22+bobX, -0.19+bobY, -0.32+rz);
   weaponCamera.rotation.y = yaw;
   weaponCamera.rotation.x = pitch;
+  weaponCamera.rotation.order = 'YXZ';
   weaponCamera.position.set(0,0,0);
 }
 
@@ -311,8 +318,10 @@ function shoot() {
     (Math.random()-0.5)*spread,
     (Math.random()-0.5)*spread,
     -1
-  ).normalize().applyEuler(camera.rotation);
-  raycaster.set(camera.position, dir);
+  ).normalize().applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
+  var camPos = new THREE.Vector3();
+  camera.getWorldPosition(camPos);
+  raycaster.set(camPos, dir);
 
   var meshTargets = [];
   for (var id in remoteEntities) {
@@ -490,7 +499,7 @@ function initSocket(name, team) {
 
 function applyMyState(p) {
   myX=p.x; myY=p.y; myZ=p.z;
-  camera.position.set(myX, myY+PLAYER_HEIGHT, myZ);
+  yawObject.position.set(myX, myY+PLAYER_HEIGHT, myZ);
   yaw=p.yaw||0; pitch=0;
   camera.rotation.y=yaw; camera.rotation.x=pitch;
   alive=p.alive; health=p.health; armor=p.armor;
